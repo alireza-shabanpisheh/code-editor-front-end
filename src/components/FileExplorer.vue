@@ -78,9 +78,7 @@ function handleCreateFolder(parentId: string) {
 }
 
 function handleDeleteItem(itemId: string) {
-  if (confirm('Are you sure you want to delete this item?')) {
-    editorStore.deleteItem(itemId)
-  }
+  editorStore.deleteItem(itemId)
 }
 
 // Modal handlers
