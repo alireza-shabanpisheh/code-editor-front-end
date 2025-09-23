@@ -12,19 +12,14 @@
           <span>Tailwind CSS</span>
         </div>
       </div>
-      
+
       <div class="flex items-center space-x-2">
-        <button
-          @click="createNewFile"
-          class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-        >
+        <button @click="createNewFile"
+          class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
           New File
         </button>
-        <button
-          @click="saveAll"
-          :disabled="!hasUnsavedFiles"
-          class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
-        >
+        <button @click="saveAll" :disabled="!hasUnsavedFiles"
+          class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors">
           Save All
         </button>
       </div>
@@ -41,7 +36,7 @@
       <div class="flex-1 flex flex-col">
         <!-- Tabs -->
         <TabSystem />
-        
+
         <!-- Editor -->
         <CodeEditor />
       </div>
@@ -60,12 +55,16 @@
           Unsaved changes
         </span>
       </div>
-      
+
       <div class="flex items-center space-x-4">
         <span>{{ openFilesCount }} files open</span>
         <span>Ready</span>
       </div>
     </div>
+
+    <!-- Input Modal -->
+    <InputModal :show="showFileModal" title="Create New File" placeholder="e.g. index.html" confirm-text="Create"
+      :validator="validateFileName" @confirm="handleCreateFileConfirm" @cancel="showFileModal = false" />
   </div>
 </template>
 
@@ -75,10 +74,14 @@ import { useEditorStore } from '@/stores/editor'
 import FileExplorer from '@/components/FileExplorer.vue'
 import TabSystem from '@/components/TabSystem.vue'
 import CodeEditor from '@/components/CodeEditor.vue'
+import InputModal from '@/components/InputModal.vue'
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 
 const editorStore = useEditorStore()
+
+// Modal state
+const showFileModal = ref(false)
 
 // Computed properties
 const activeFile = computed(() => editorStore.activeFile)
@@ -93,24 +96,32 @@ const currentLine = ref(1)
 const currentColumn = ref(1)
 
 // Methods
-async function createNewFile() {
-  const fileName = prompt('Enter file name (with extension .html, .css, or .js):')
-  if (!fileName) return
+function createNewFile() {
+  showFileModal.value = true
+}
+
+// Validation function
+function validateFileName(fileName: string): string | null {
+  if (!fileName.trim()) {
+    return 'File name cannot be empty'
+  }
 
   const extension = fileName.split('.').pop()?.toLowerCase()
   if (!extension || !['html', 'css', 'js'].includes(extension)) {
-    toast("Please use .html, .css, or .js extension", {
-      "type": "info",
-      "dangerouslyHTMLString": true
-    })
-    return
+    return 'Please use .html, .css, or .js extension'
   }
 
-  const fileType = extension as 'html' | 'css' | 'js'
-  const newFileId = await editorStore.createNewFile(fileName, fileType)
+  return null
+}
+
+// Confirm handler
+async function handleCreateFileConfirm(fileName: string) {
+  const extension = fileName.split('.').pop()?.toLowerCase() as 'html' | 'css' | 'js'
+  const newFileId = await editorStore.createNewFile(fileName, extension)
   if (newFileId) {
     editorStore.openFile(newFileId)
   }
+  showFileModal.value = false
 }
 
 function saveAll() {
@@ -128,7 +139,7 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault()
     createNewFile()
   }
-  
+
   // Ctrl+Shift+S for save all
   if (event.ctrlKey && event.shiftKey && event.key === 'S') {
     event.preventDefault()
