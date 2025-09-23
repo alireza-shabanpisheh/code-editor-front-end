@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { apiService } from '@/services/api'
 
 export interface FileNode {
   id: string
@@ -21,134 +22,45 @@ export interface OpenFile {
 
 export const useEditorStore = defineStore('editor', () => {
   // ساختار پوشه‌ای پروژه
-  const fileTree = ref<FileNode[]>([
-    {
-      id: 'src',
-      name: 'src',
-      type: 'folder',
-      isOpen: true,
-      children: [
-        {
-          id: 'index.html',
-          name: 'index.html',
-          type: 'file',
-          fileType: 'html',
-          content: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Project</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <h1>Hello World!</h1>
-    <p>Welcome to my code editor</p>
-    <script src="script.js"></script>
-</body>
-</html>`
-        },
-        {
-          id: 'styles.css',
-          name: 'styles.css',
-          type: 'file',
-          fileType: 'css',
-          content: `body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f5f5f5;
-}
+  const fileTree = ref<FileNode[]>([])
 
-h1 {
-    color: #333;
-    text-align: center;
-}
+  // Loading state
+  const isLoading = ref(false)
 
-p {
-    color: #666;
-    text-align: center;
-    font-size: 16px;
-}`
-        },
-        {
-          id: 'script.js',
-          name: 'script.js',
-          type: 'file',
-          fileType: 'js',
-          content: `console.log('Hello from script.js');
-
-function greetUser() {
-    const name = prompt('What is your name?');
-    if (name) {
-        alert('Hello, ' + name + '!');
-    }
-}
-
-// Call the function when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM is ready');
-    
-    // Add click event to h1
-    const h1 = document.querySelector('h1');
-    if (h1) {
-        h1.addEventListener('click', greetUser);
-    }
-});`
-        }
-      ]
-    },
-    {
-      id: 'components',
-      name: 'components',
-      type: 'folder',
-      isOpen: false,
-      children: [
-        {
-          id: 'header.html',
-          name: 'header.html',
-          type: 'file',
-          fileType: 'html',
-          content: `<header class="main-header">
-    <nav>
-        <ul>
-            <li><a href="#home">Home</a></li>
-            <li><a href="#about">About</a></li>
-            <li><a href="#contact">Contact</a></li>
-        </ul>
-    </nav>
-</header>`
-        },
-        {
-          id: 'footer.js',
-          name: 'footer.js',
-          type: 'file',
-          fileType: 'js',
-          content: `function createFooter() {
-    const footer = document.createElement('footer');
-    footer.innerHTML = '<p>&copy; 2024 My Website. All rights reserved.</p>';
-    footer.className = 'main-footer';
-    return footer;
-}
-
-// Export for use in other files
-window.createFooter = createFooter;`
-        }
-      ]
-    }
-  ])
+  // Error state
+  const error = ref<string | null>(null)
 
   // فایل‌های باز شده
   const openFiles = ref<OpenFile[]>([])
-  
+
   // فایل فعال
   const activeFileId = ref<string | null>(null)
 
   // محاسبه شده: فایل فعال
   const activeFile = computed(() => {
     if (!activeFileId.value) return null
-    return openFiles.value.find(file => file.id === activeFileId.value) || null
+    return openFiles.value.find((file) => file.id === activeFileId.value) || null
   })
+
+  // بارگذاری اولیه داده‌ها از سرور
+  async function loadFileTree() {
+    try {
+      isLoading.value = true
+      error.value = null
+
+      const response = await apiService.getFileTree()
+      if (response.success && response.data) {
+        fileTree.value = response.data
+      } else {
+        error.value = response.message || 'خطا در بارگذاری فایل‌ها'
+      }
+    } catch (err) {
+      error.value = 'خطا در ارتباط با سرور'
+      console.error('Failed to load file tree:', err)
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   // پیدا کردن فایل در درخت
   function findFileInTree(fileId: string, nodes: FileNode[] = fileTree.value): FileNode | null {
@@ -165,33 +77,43 @@ window.createFooter = createFooter;`
   }
 
   // باز کردن فایل
-  function openFile(fileId: string) {
+  async function openFile(fileId: string) {
     const fileNode = findFileInTree(fileId)
     if (!fileNode || fileNode.type !== 'file' || !fileNode.fileType) return
 
     // بررسی اینکه فایل قبلاً باز شده یا نه
-    const existingFile = openFiles.value.find(file => file.id === fileId)
+    const existingFile = openFiles.value.find((file) => file.id === fileId)
     if (existingFile) {
       activeFileId.value = fileId
       return
     }
 
-    // اضافه کردن فایل جدید به لیست فایل‌های باز
-    const newFile: OpenFile = {
-      id: fileId,
-      name: fileNode.name,
-      content: fileNode.content || '',
-      fileType: fileNode.fileType,
-      isDirty: false
-    }
+    try {
+      // دریافت محتوای فایل از سرور
+      const response = await apiService.getFileContent(fileId)
+      if (response.success && response.data) {
+        const newFile: OpenFile = {
+          id: fileId,
+          name: fileNode.name,
+          content: response.data.content,
+          fileType: fileNode.fileType,
+          isDirty: false,
+        }
 
-    openFiles.value.push(newFile)
-    activeFileId.value = fileId
+        openFiles.value.push(newFile)
+        activeFileId.value = fileId
+      } else {
+        error.value = response.message || 'خطا در بارگذاری فایل'
+      }
+    } catch (err) {
+      error.value = 'خطا در ارتباط با سرور'
+      console.error('Failed to open file:', err)
+    }
   }
 
   // بستن فایل
   function closeFile(fileId: string) {
-    const index = openFiles.value.findIndex(file => file.id === fileId)
+    const index = openFiles.value.findIndex((file) => file.id === fileId)
     if (index === -1) return
 
     openFiles.value.splice(index, 1)
@@ -208,7 +130,7 @@ window.createFooter = createFooter;`
 
   // تغییر محتوای فایل
   function updateFileContent(fileId: string, content: string) {
-    const file = openFiles.value.find(f => f.id === fileId)
+    const file = openFiles.value.find((f) => f.id === fileId)
     if (file) {
       file.content = content
       file.isDirty = true
@@ -216,96 +138,101 @@ window.createFooter = createFooter;`
   }
 
   // ذخیره فایل
-  function saveFile(fileId: string) {
-    const file = openFiles.value.find(f => f.id === fileId)
-    if (file) {
-      file.isDirty = false
-      // اینجا می‌توان محتوا را در درخت فایل‌ها نیز بروزرسانی کرد
-      const fileNode = findFileInTree(fileId)
-      if (fileNode) {
-        fileNode.content = file.content
+  async function saveFile(fileId: string) {
+    const file = openFiles.value.find((f) => f.id === fileId)
+    if (!file || !file.isDirty) return
+
+    try {
+      const response = await apiService.updateFileContent(fileId, file.content)
+      if (response.success) {
+        file.isDirty = false
+        // بروزرسانی محتوا در درخت فایل‌ها نیز
+        const fileNode = findFileInTree(fileId)
+        if (fileNode) {
+          fileNode.content = file.content
+        }
+      } else {
+        error.value = response.message || 'خطا در ذخیره فایل'
       }
+    } catch (err) {
+      error.value = 'خطا در ارتباط با سرور'
+      console.error('Failed to save file:', err)
     }
   }
 
   // تغییر وضعیت باز/بسته پوشه
-  function toggleFolder(folderId: string) {
-    const folder = findFileInTree(folderId)
-    if (folder && folder.type === 'folder') {
-      folder.isOpen = !folder.isOpen
+  async function toggleFolder(folderId: string) {
+    try {
+      const response = await apiService.toggleFolder(folderId)
+      if (response.success) {
+        // بروزرسانی محلی
+        const folder = findFileInTree(folderId)
+        if (folder && folder.type === 'folder') {
+          folder.isOpen = !folder.isOpen
+        }
+      } else {
+        error.value = response.message || 'خطا در تغییر وضعیت فولدر'
+      }
+    } catch (err) {
+      error.value = 'خطا در ارتباط با سرور'
+      console.error('Failed to toggle folder:', err)
     }
   }
 
   // ایجاد فایل جدید
-  function createNewFile(name: string, fileType: 'html' | 'css' | 'js', parentId?: string) {
-    const newFile: FileNode = {
-      id: `${Date.now()}-${name}`,
-      name,
-      type: 'file',
-      fileType,
-      content: getDefaultContent(fileType)
-    }
-
-    if (parentId) {
-      const parent = findFileInTree(parentId)
-      if (parent && parent.type === 'folder') {
-        if (!parent.children) parent.children = []
-        parent.children.push(newFile)
-        parent.isOpen = true
+  async function createNewFile(name: string, fileType: 'html' | 'css' | 'js', parentId?: string) {
+    try {
+      const response = await apiService.createFile(name, fileType, parentId)
+      if (response.success && response.data) {
+        // بروزرسانی درخت فایل‌ها
+        await loadFileTree()
+        return response.data.id
+      } else {
+        error.value = response.message || 'خطا در ایجاد فایل'
+        return null
       }
-    } else {
-      fileTree.value.push(newFile)
+    } catch (err) {
+      error.value = 'خطا در ارتباط با سرور'
+      console.error('Failed to create file:', err)
+      return null
     }
-
-    return newFile.id
   }
 
   // ایجاد فولدر جدید
-  function createNewFolder(name: string, parentId?: string) {
-    const newFolder: FileNode = {
-      id: `${Date.now()}-${name}`,
-      name,
-      type: 'folder',
-      isOpen: true,
-      children: []
-    }
-
-    if (parentId) {
-      const parent = findFileInTree(parentId)
-      if (parent && parent.type === 'folder') {
-        if (!parent.children) parent.children = []
-        parent.children.push(newFolder)
-        parent.isOpen = true
+  async function createNewFolder(name: string, parentId?: string) {
+    try {
+      const response = await apiService.createFolder(name, parentId)
+      if (response.success && response.data) {
+        // بروزرسانی درخت فایل‌ها
+        await loadFileTree()
+        return response.data.id
+      } else {
+        error.value = response.message || 'خطا در ایجاد فولدر'
+        return null
       }
-    } else {
-      fileTree.value.push(newFolder)
+    } catch (err) {
+      error.value = 'خطا در ارتباط با سرور'
+      console.error('Failed to create folder:', err)
+      return null
     }
-
-    return newFolder.id
   }
 
   // حذف فایل یا فولدر
-  function deleteItem(itemId: string) {
-    function deleteFromArray(nodes: FileNode[]): boolean {
-      for (let i = 0; i < nodes.length; i++) {
-        if (nodes[i].id === itemId) {
-          // اگر فایل باز بود، آن را ببند
-          if (nodes[i].type === 'file') {
-            closeFile(itemId)
-          }
-          nodes.splice(i, 1)
-          return true
-        }
-        if (nodes[i].children) {
-          if (deleteFromArray(nodes[i].children!)) {
-            return true
-          }
-        }
+  async function deleteItem(itemId: string) {
+    try {
+      const response = await apiService.deleteItem(itemId)
+      if (response.success) {
+        // بستن فایل اگر باز بود
+        closeFile(itemId)
+        // بروزرسانی درخت فایل‌ها
+        await loadFileTree()
+      } else {
+        error.value = response.message || 'خطا در حذف آیتم'
       }
-      return false
+    } catch (err) {
+      error.value = 'خطا در ارتباط با سرور'
+      console.error('Failed to delete item:', err)
     }
-
-    deleteFromArray(fileTree.value)
   }
 
   // محتوای پیش‌فرض برای انواع فایل
@@ -336,11 +263,38 @@ window.createFooter = createFooter;`
     }
   }
 
+  // ریست پروژه
+  async function resetProject() {
+    try {
+      const response = await apiService.resetProject()
+      if (response.success) {
+        // بستن همه فایل‌های باز
+        openFiles.value = []
+        activeFileId.value = null
+        // بروزرسانی درخت فایل‌ها
+        await loadFileTree()
+      } else {
+        error.value = response.message || 'خطا در ریست پروژه'
+      }
+    } catch (err) {
+      error.value = 'خطا در ارتباط با سرور'
+      console.error('Failed to reset project:', err)
+    }
+  }
+
+  // پاک کردن خطا
+  function clearError() {
+    error.value = null
+  }
+
   return {
     fileTree,
     openFiles,
     activeFileId,
     activeFile,
+    isLoading,
+    error,
+    loadFileTree,
     openFile,
     closeFile,
     updateFileContent,
@@ -349,6 +303,8 @@ window.createFooter = createFooter;`
     createNewFile,
     createNewFolder,
     deleteItem,
-    findFileInTree
+    resetProject,
+    clearError,
+    findFileInTree,
   }
 })
