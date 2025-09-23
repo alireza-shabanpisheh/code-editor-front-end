@@ -124,25 +124,23 @@ const highlightedCode = computed(() => {
 function highlightSyntax(code: string, fileType: 'html' | 'css' | 'js'): string {
   if (!code) return ''
   
-  // Escape HTML characters first
-  let highlighted = code
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  
   switch (fileType) {
     case 'html':
-      highlighted = highlightHTML(highlighted)
-      break
+      // For HTML, escape first then highlight
+      let htmlHighlighted = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+      return highlightHTML(htmlHighlighted)
     case 'css':
-      highlighted = highlightCSS(highlighted)
-      break
+      // For CSS, no escaping needed as it doesn't contain HTML tags
+      return highlightCSS(code)
     case 'js':
-      highlighted = highlightJS(highlighted)
-      break
+      // For JS, no escaping needed as it doesn't contain HTML tags
+      return highlightJS(code)
   }
   
-  return highlighted
+  return code
 }
 
 function highlightHTML(code: string): string {
@@ -175,6 +173,12 @@ function highlightHTML(code: string): string {
 function highlightCSS(code: string): string {
   let highlighted = code
   
+  // Escape HTML characters first
+  highlighted = highlighted
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  
   // Comments first
   highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="text-gray-500">$1</span>')
   
@@ -205,27 +209,86 @@ function highlightCSS(code: string): string {
 function highlightJS(code: string): string {
   let highlighted = code
   
-  // Comments first
-  highlighted = highlighted.replace(/(\/\/.*$)/gm, '<span class="text-gray-500">$1</span>')
-  highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="text-gray-500">$1</span>')
+  // First escape any existing HTML characters in the code
+  highlighted = highlighted
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
   
-  // Strings (before other replacements)
-  highlighted = highlighted.replace(/(["'`])(?:(?=(\\?))\2.)*?\1/g, '<span class="text-green-400">$&</span>')
+  // Step 1: Protect and highlight comments first (highest priority)
+  const commentPlaceholders: string[] = []
+  
+  // Single line comments
+  highlighted = highlighted.replace(/(\/\/.*$)/gm, (match) => {
+    const placeholder = `__COMMENT_${commentPlaceholders.length}__`
+    commentPlaceholders.push(`<span class="text-gray-500">${match}</span>`)
+    return placeholder
+  })
+  
+  // Multi-line comments
+  highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/)/g, (match) => {
+    const placeholder = `__COMMENT_${commentPlaceholders.length}__`
+    commentPlaceholders.push(`<span class="text-gray-500">${match}</span>`)
+    return placeholder
+  })
+  
+  // Step 2: Protect and highlight strings (second priority)
+  const stringPlaceholders: string[] = []
+  
+  // Double quoted strings
+  highlighted = highlighted.replace(/"(?:[^"\\\\]|\\\\.)*"/g, (match) => {
+    const placeholder = `__STRING_${stringPlaceholders.length}__`
+    stringPlaceholders.push(`<span class="text-green-400">${match}</span>`)
+    return placeholder
+  })
+  
+  // Single quoted strings
+  highlighted = highlighted.replace(/'(?:[^'\\\\]|\\\\.)*'/g, (match) => {
+    const placeholder = `__STRING_${stringPlaceholders.length}__`
+    stringPlaceholders.push(`<span class="text-green-400">${match}</span>`)
+    return placeholder
+  })
   
   // Template literals
-  highlighted = highlighted.replace(/(`[^`]*`)/g, '<span class="text-green-400">$1</span>')
+  highlighted = highlighted.replace(/`(?:[^`\\\\]|\\\\.)*`/g, (match) => {
+    const placeholder = `__STRING_${stringPlaceholders.length}__`
+    stringPlaceholders.push(`<span class="text-green-400">${match}</span>`)
+    return placeholder
+  })
   
-  // Keywords
-  highlighted = highlighted.replace(/\b(function|var|let|const|if|else|for|while|do|switch|case|default|break|continue|return|class|extends|import|export|from|as|async|await|try|catch|finally|throw|new|this|super|static|public|private|protected|readonly|abstract|interface|type|enum|namespace|module|declare|null|undefined|true|false|typeof|instanceof|in|of|delete|void)\b/g, '<span class="text-purple-400">$1</span>')
+  // Step 3: Highlight keywords
+  const keywords = [
+    'function', 'var', 'let', 'const', 'if', 'else', 'for', 'while', 'do',
+    'switch', 'case', 'default', 'break', 'continue', 'return', 'class',
+    'extends', 'import', 'export', 'from', 'as', 'async', 'await', 'try',
+    'catch', 'finally', 'throw', 'new', 'this', 'super', 'static', 'null',
+    'undefined', 'true', 'false', 'typeof', 'instanceof', 'in', 'of',
+    'delete', 'void'
+  ]
   
-  // Numbers
+  keywords.forEach(keyword => {
+    const regex = new RegExp(`\\b(${keyword})\\b`, 'g')
+    highlighted = highlighted.replace(regex, '<span class="text-purple-400">$1</span>')
+  })
+  
+  // Step 4: Highlight numbers
   highlighted = highlighted.replace(/\b(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g, '<span class="text-orange-400">$1</span>')
   
-  // Function calls
+  // Step 5: Highlight function calls (before object properties)
   highlighted = highlighted.replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*\()/g, '<span class="text-yellow-400">$1</span>$2')
   
-  // Object properties
-  highlighted = highlighted.replace(/\.([a-zA-Z_$][a-zA-Z0-9_$]*)/g, '.<span class="text-cyan-400">$1</span>')
+  // Step 6: Highlight object properties
+  highlighted = highlighted.replace(/\.([a-zA-Z_$][a-zA-Z0-9_$]*)\b/g, '.<span class="text-cyan-400">$1</span>')
+  
+  // Step 7: Restore strings
+  stringPlaceholders.forEach((replacement, index) => {
+    highlighted = highlighted.replace(`__STRING_${index}__`, replacement)
+  })
+  
+  // Step 8: Restore comments
+  commentPlaceholders.forEach((replacement, index) => {
+    highlighted = highlighted.replace(`__COMMENT_${index}__`, replacement)
+  })
   
   return highlighted
 }
