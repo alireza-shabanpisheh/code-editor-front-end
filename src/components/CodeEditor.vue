@@ -39,7 +39,7 @@
           </button>
           
           <button
-            @click="formatCode"
+            @click="async () => await formatCode()"
             class="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
           >
             Format
@@ -85,6 +85,15 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 import { useEditorStore } from '@/stores/editor'
+import Prism from 'prismjs';
+import 'prismjs/components/prism-javascript'; // برای پشتیبانی از JavaScript
+import 'prismjs/components/prism-markup'; // برای HTML
+import 'prismjs/components/prism-css';
+import 'prismjs/themes/prism-okaidia.css';
+import prettier from 'prettier/standalone';
+import parserBabel from 'prettier/parser-babel'; // برای JavaScript
+import parserHtml from 'prettier/parser-html'; // برای HTML
+import parserCss from 'prettier/parser-postcss'; // برای CSS
 
 const editorStore = useEditorStore()
 
@@ -126,172 +135,17 @@ function highlightSyntax(code: string, fileType: 'html' | 'css' | 'js'): string 
   
   switch (fileType) {
     case 'html':
-      // For HTML, escape first then highlight
-      let htmlHighlighted = code
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-      return highlightHTML(htmlHighlighted)
+      return Prism.highlight(code, Prism.languages.html, 'html');
     case 'css':
       // For CSS, no escaping needed as it doesn't contain HTML tags
-      return highlightCSS(code)
+      return Prism.highlight(code, Prism.languages.css, 'css');
     case 'js':
       // For JS, no escaping needed as it doesn't contain HTML tags
-      return highlightJS(code)
+      return Prism.highlight(code, Prism.languages.javascript, 'javascript');
   }
   
-  return code
 }
 
-function highlightHTML(code: string): string {
-  let highlighted = code
-  
-  // Comments first (highest priority)
-  highlighted = highlighted.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="text-gray-500">$1</span>')
-  
-  // HTML tags with attributes
-  highlighted = highlighted.replace(/(&lt;\/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s+[^&]*?)?&gt;)/g, (match, openTag, tagName, rest) => {
-    // Color the tag
-    let result = `${openTag}<span class="text-blue-400">${tagName}</span>`
-    
-    // Color attributes in the rest
-    let attributePart = rest.replace(/&gt;$/, '') // Remove closing >
-    if (attributePart.trim()) {
-      // Attribute names
-      attributePart = attributePart.replace(/\s+([a-zA-Z-]+)=/g, ' <span class="text-green-400">$1</span>=')
-      // Attribute values
-      attributePart = attributePart.replace(/="([^"]*)"/g, '="<span class="text-orange-400">$1</span>"')
-      attributePart = attributePart.replace(/'([^']*)'/g, '\'<span class="text-orange-400">$1</span>\'')
-    }
-    
-    return result + attributePart + '&gt;'
-  })
-  
-  return highlighted
-}
-
-function highlightCSS(code: string): string {
-  let highlighted = code
-  
-  // Escape HTML characters first
-  highlighted = highlighted
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  
-  // Comments first
-  highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="text-gray-500">$1</span>')
-  
-  // CSS selectors (before {)
-  highlighted = highlighted.replace(/^([^{\/]+?)(\s*{)/gm, (match, selector, brace) => {
-    return `<span class="text-blue-400">${selector}</span>${brace}`
-  })
-  
-  // CSS properties and values
-  highlighted = highlighted.replace(/([a-zA-Z-]+)(\s*)(:)(\s*)([^;]+)(;)/g, (match, prop, space1, colon, space2, value, semicolon) => {
-    let coloredValue = value
-    // Color numbers
-    coloredValue = coloredValue.replace(/\b(\d+(?:\.\d+)?(?:px|em|rem|%|vh|vw|pt|pc|in|cm|mm|ex|ch|vmin|vmax|deg|rad|turn|s|ms)?)\b/g, '<span class="text-orange-400">$1</span>')
-    // Color hex colors
-    coloredValue = coloredValue.replace(/(#[0-9a-fA-F]{3,8})/g, '<span class="text-yellow-400">$1</span>')
-    // Color strings
-    coloredValue = coloredValue.replace(/(["'])([^"']*)\1/g, '<span class="text-green-400">$1$2$1</span>')
-    
-    return `<span class="text-green-400">${prop}</span>${space1}${colon}${space2}${coloredValue}${semicolon}`
-  })
-  
-  // !important
-  highlighted = highlighted.replace(/(!important)/g, '<span class="text-red-400">$1</span>')
-  
-  return highlighted
-}
-
-function highlightJS(code: string): string {
-  let highlighted = code
-  
-  // First escape any existing HTML characters in the code
-  highlighted = highlighted
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  
-  // Step 1: Protect and highlight comments first (highest priority)
-  const commentPlaceholders: string[] = []
-  
-  // Single line comments
-  highlighted = highlighted.replace(/(\/\/.*$)/gm, (match) => {
-    const placeholder = `__COMMENT_${commentPlaceholders.length}__`
-    commentPlaceholders.push(`<span class="text-gray-500">${match}</span>`)
-    return placeholder
-  })
-  
-  // Multi-line comments
-  highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/)/g, (match) => {
-    const placeholder = `__COMMENT_${commentPlaceholders.length}__`
-    commentPlaceholders.push(`<span class="text-gray-500">${match}</span>`)
-    return placeholder
-  })
-  
-  // Step 2: Protect and highlight strings (second priority)
-  const stringPlaceholders: string[] = []
-  
-  // Double quoted strings
-  highlighted = highlighted.replace(/"(?:[^"\\\\]|\\\\.)*"/g, (match) => {
-    const placeholder = `__STRING_${stringPlaceholders.length}__`
-    stringPlaceholders.push(`<span class="text-green-400">${match}</span>`)
-    return placeholder
-  })
-  
-  // Single quoted strings
-  highlighted = highlighted.replace(/'(?:[^'\\\\]|\\\\.)*'/g, (match) => {
-    const placeholder = `__STRING_${stringPlaceholders.length}__`
-    stringPlaceholders.push(`<span class="text-green-400">${match}</span>`)
-    return placeholder
-  })
-  
-  // Template literals
-  highlighted = highlighted.replace(/`(?:[^`\\\\]|\\\\.)*`/g, (match) => {
-    const placeholder = `__STRING_${stringPlaceholders.length}__`
-    stringPlaceholders.push(`<span class="text-green-400">${match}</span>`)
-    return placeholder
-  })
-  
-  // Step 3: Highlight keywords
-  const keywords = [
-    'function', 'var', 'let', 'const', 'if', 'else', 'for', 'while', 'do',
-    'switch', 'case', 'default', 'break', 'continue', 'return', 'class',
-    'extends', 'import', 'export', 'from', 'as', 'async', 'await', 'try',
-    'catch', 'finally', 'throw', 'new', 'this', 'super', 'static', 'null',
-    'undefined', 'true', 'false', 'typeof', 'instanceof', 'in', 'of',
-    'delete', 'void'
-  ]
-  
-  keywords.forEach(keyword => {
-    const regex = new RegExp(`\\b(${keyword})\\b`, 'g')
-    highlighted = highlighted.replace(regex, '<span class="text-purple-400">$1</span>')
-  })
-  
-  // Step 4: Highlight numbers
-  highlighted = highlighted.replace(/\b(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g, '<span class="text-orange-400">$1</span>')
-  
-  // Step 5: Highlight function calls (before object properties)
-  highlighted = highlighted.replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*\()/g, '<span class="text-yellow-400">$1</span>$2')
-  
-  // Step 6: Highlight object properties
-  highlighted = highlighted.replace(/\.([a-zA-Z_$][a-zA-Z0-9_$]*)\b/g, '.<span class="text-cyan-400">$1</span>')
-  
-  // Step 7: Restore strings
-  stringPlaceholders.forEach((replacement, index) => {
-    highlighted = highlighted.replace(`__STRING_${index}__`, replacement)
-  })
-  
-  // Step 8: Restore comments
-  commentPlaceholders.forEach((replacement, index) => {
-    highlighted = highlighted.replace(`__COMMENT_${index}__`, replacement)
-  })
-  
-  return highlighted
-}
 
 function handleContentChange() {
   if (activeFile.value) {
@@ -348,63 +202,87 @@ function saveCurrentFile() {
   }
 }
 
-function formatCode() {
-  if (!activeFile.value) return
-  
-  const fileType = activeFile.value.fileType
-  let formatted = editorContent.value
-  
-  // Simple formatting based on file type
-  switch (fileType) {
-    case 'html':
-      formatted = formatHTML(formatted)
-      break
-    case 'css':
-      formatted = formatCSS(formatted)
-      break
-    case 'js':
-      formatted = formatJS(formatted)
-      break
+async function formatCode() {
+  if (!activeFile.value) return;
+
+  const fileType = activeFile.value.fileType;
+  let formatted = editorContent.value;
+
+  try {
+    switch (fileType) {
+      case 'html':
+        formatted = await prettier.format(editorContent.value, {
+          parser: 'html',
+          plugins: [parserHtml],
+          tabWidth: 2,
+          useTabs: false,
+          printWidth: 80,
+        });
+        
+        break;
+      case 'css':
+        formatted = await prettier.format(editorContent.value, {
+          parser: 'css',
+          plugins: [parserCss],
+          tabWidth: 2,
+          useTabs: false,
+          printWidth: 80,
+        });
+        break;
+      case 'js':
+        formatted = await prettier.format(editorContent.value, {
+          parser: 'babel',
+          plugins: [parserBabel],
+          tabWidth: 2,
+          useTabs: false,
+          printWidth: 80,
+        });
+        break;
+    }
+  } catch (error) {
+    console.error('Error formatting code:', error);
+    // اگه خطایی رخ داد، کد بدون تغییر می‌مونه
   }
-  
-  editorContent.value = formatted
-  handleContentChange()
+
+  editorContent.value = formatted;
+  handleContentChange();
 }
 
-function formatHTML(code: string): string {
-  // Very basic HTML formatting
-  return code
-    .replace(/>\s*</g, '>\n<')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .join('\n')
-}
+// function formatHTML(code: string): string {
+//   // Very basic HTML formatting
+//   return code
+//     .replace(/>\s*</g, '>\n<')
+//     .split('\n')
+//     .map(line => line.trim())
+//     .filter(line => line.length > 0)
+//     .join('\n')
+// }
 
-function formatCSS(code: string): string {
-  // Very basic CSS formatting
-  return code
-    .replace(/\{/g, ' {\n  ')
-    .replace(/\}/g, '\n}\n')
-    .replace(/;/g, ';\n  ')
-    .replace(/,/g, ',\n')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .join('\n')
-}
+// function formatCSS(code: string): string {
+//   // Very basic CSS formatting
+//   return code
+//     .replace(/\{/g, ' {\n  ')
+//     .replace(/\}/g, '\n}\n')
+//     .replace(/;/g, ';\n  ')
+//     .replace(/,/g, ',\n')
+//     .split('\n')
+//     .map(line => line.trim())
+//     .filter(line => line.length > 0)
+//     .join('\n')
+// }
 
-function formatJS(code: string): string {
-  // Very basic JS formatting
-  return code
-    .replace(/\{/g, ' {\n  ')
-    .replace(/\}/g, '\n}\n')
-    .replace(/;/g, ';\n')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .join('\n')
-}
+// function formatJS(code: string): string {
+//   // Very basic JS formatting
+//   return code
+//     .replace(/\{/g, ' {\n  ')
+//     .replace(/\}/g, '\n}\n')
+//     .replace(/;/g, ';\n')
+//     .split('\n')
+//     .map(line => line.trim())
+//     .filter(line => line.length > 0)
+//     .join('\n')
+// }
+
 </script>
 
 <style scoped>
