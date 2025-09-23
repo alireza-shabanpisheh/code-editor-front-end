@@ -260,6 +260,54 @@ window.createFooter = createFooter;`
     return newFile.id
   }
 
+  // ایجاد فولدر جدید
+  function createNewFolder(name: string, parentId?: string) {
+    const newFolder: FileNode = {
+      id: `${Date.now()}-${name}`,
+      name,
+      type: 'folder',
+      isOpen: true,
+      children: []
+    }
+
+    if (parentId) {
+      const parent = findFileInTree(parentId)
+      if (parent && parent.type === 'folder') {
+        if (!parent.children) parent.children = []
+        parent.children.push(newFolder)
+        parent.isOpen = true
+      }
+    } else {
+      fileTree.value.push(newFolder)
+    }
+
+    return newFolder.id
+  }
+
+  // حذف فایل یا فولدر
+  function deleteItem(itemId: string) {
+    function deleteFromArray(nodes: FileNode[]): boolean {
+      for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].id === itemId) {
+          // اگر فایل باز بود، آن را ببند
+          if (nodes[i].type === 'file') {
+            closeFile(itemId)
+          }
+          nodes.splice(i, 1)
+          return true
+        }
+        if (nodes[i].children) {
+          if (deleteFromArray(nodes[i].children!)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+
+    deleteFromArray(fileTree.value)
+  }
+
   // محتوای پیش‌فرض برای انواع فایل
   function getDefaultContent(fileType: 'html' | 'css' | 'js'): string {
     switch (fileType) {
@@ -299,6 +347,8 @@ window.createFooter = createFooter;`
     saveFile,
     toggleFolder,
     createNewFile,
+    createNewFolder,
+    deleteItem,
     findFileInTree
   }
 })

@@ -1,10 +1,11 @@
 <template>
   <div class="file-tree-node">
     <div 
-      class="flex items-center py-1 px-2 hover:bg-gray-700 cursor-pointer rounded text-sm"
+      class="flex items-center py-1 px-2 hover:bg-gray-700 cursor-pointer rounded text-sm group"
       :class="{ 'bg-gray-700': isSelected }"
       :style="{ paddingLeft: `${(level * 16) + 8}px` }"
       @click="handleClick"
+      @contextmenu="handleRightClick"
     >
       <!-- آیکون برای پوشه یا فایل -->
       <div class="w-4 h-4 mr-2 flex items-center justify-center">
@@ -34,6 +35,33 @@
       >
         {{ node.name }}
       </span>
+
+      <!-- Action buttons (show on hover) -->
+      <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1 ml-2">
+        <template v-if="node.type === 'folder'">
+          <button
+            @click.stop="$emit('create-file', node.id)"
+            class="p-1 hover:bg-gray-600 rounded text-xs"
+            title="New File"
+          >
+            📄
+          </button>
+          <button
+            @click.stop="$emit('create-folder', node.id)"
+            class="p-1 hover:bg-gray-600 rounded text-xs"
+            title="New Folder"
+          >
+            📁
+          </button>
+        </template>
+        <button
+          @click.stop="$emit('delete-item', node.id)"
+          class="p-1 hover:bg-gray-600 rounded text-xs text-red-400"
+          title="Delete"
+        >
+          🗑️
+        </button>
+      </div>
     </div>
     
     <!-- فرزندان پوشه -->
@@ -45,6 +73,9 @@
         :level="level + 1"
         @open-file="$emit('open-file', $event)"
         @toggle-folder="$emit('toggle-folder', $event)"
+        @create-file="$emit('create-file', $event)"
+        @create-folder="$emit('create-folder', $event)"
+        @delete-item="$emit('delete-item', $event)"
       />
     </template>
   </div>
@@ -65,6 +96,9 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'open-file': [fileId: string]
   'toggle-folder': [folderId: string]
+  'create-file': [parentId: string]
+  'create-folder': [parentId: string]
+  'delete-item': [itemId: string]
 }>()
 
 const editorStore = useEditorStore()
@@ -79,6 +113,14 @@ function handleClick() {
   } else {
     emit('open-file', props.node.id)
   }
+}
+
+function handleRightClick(event: MouseEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  // For now, we'll use the simple button approach
+  // Context menu could be implemented later if needed
 }
 
 function getFileIconClass() {
