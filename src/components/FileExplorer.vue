@@ -41,6 +41,8 @@
 import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor'
 import FileTreeNode from './FileTreeNode.vue'
+import { toast } from "vue3-toastify";
+import "vue3-toastify/dist/index.css";
 
 const editorStore = useEditorStore()
 
@@ -74,7 +76,11 @@ async function createNewFile() {
 
   const extension = fileName.split('.').pop()?.toLowerCase()
   if (!extension || !['html', 'css', 'js'].includes(extension)) {
-    alert('Please use .html, .css, or .js extension')
+    toast("Please use .html, .css, or .js extension", {
+      "type": "info",
+      "dangerouslyHTMLString": true
+    })
+    
     return
   }
 
@@ -90,7 +96,10 @@ function createNewFolder() {
   if (!folderName) return
 
   if (folderName.includes('.')) {
-    alert('Folder names should not contain dots')
+    toast("Folder names should not contain dots", {
+  "type": "info",
+  "dangerouslyHTMLString": true
+})
     return
   }
 
@@ -103,7 +112,10 @@ async function createFileInParent(parentId: string) {
 
   const extension = fileName.split('.').pop()?.toLowerCase()
   if (!extension || !['html', 'css', 'js'].includes(extension)) {
-    alert('Please use .html, .css, or .js extension')
+    toast("Please use .html, .css, or .js extension", {
+      "type": "info",
+      "dangerouslyHTMLString": true
+    })
     return
   }
 
@@ -119,7 +131,10 @@ function createFolderInParent(parentId: string) {
   if (!folderName) return
 
   if (folderName.includes('.')) {
-    alert('Folder names should not contain dots')
+        toast("Folder names should not contain dots", {
+        "type": "info",
+        "dangerouslyHTMLString": true
+        })
     return
   }
 

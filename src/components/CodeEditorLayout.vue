@@ -75,6 +75,8 @@ import { useEditorStore } from '@/stores/editor'
 import FileExplorer from '@/components/FileExplorer.vue'
 import TabSystem from '@/components/TabSystem.vue'
 import CodeEditor from '@/components/CodeEditor.vue'
+import { toast } from "vue3-toastify";
+import "vue3-toastify/dist/index.css";
 
 const editorStore = useEditorStore()
 
@@ -97,7 +99,10 @@ async function createNewFile() {
 
   const extension = fileName.split('.').pop()?.toLowerCase()
   if (!extension || !['html', 'css', 'js'].includes(extension)) {
-    alert('Please use .html, .css, or .js extension')
+    toast("Please use .html, .css, or .js extension", {
+      "type": "info",
+      "dangerouslyHTMLString": true
+    })
     return
   }
 
