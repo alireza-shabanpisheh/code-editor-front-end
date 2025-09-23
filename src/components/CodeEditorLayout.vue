@@ -91,7 +91,7 @@ const currentLine = ref(1)
 const currentColumn = ref(1)
 
 // Methods
-function createNewFile() {
+async function createNewFile() {
   const fileName = prompt('Enter file name (with extension .html, .css, or .js):')
   if (!fileName) return
 
@@ -102,8 +102,10 @@ function createNewFile() {
   }
 
   const fileType = extension as 'html' | 'css' | 'js'
-  const newFileId = editorStore.createNewFile(fileName, fileType)
-  editorStore.openFile(newFileId)
+  const newFileId = await editorStore.createNewFile(fileName, fileType)
+  if (newFileId) {
+    editorStore.openFile(newFileId)
+  }
 }
 
 function saveAll() {

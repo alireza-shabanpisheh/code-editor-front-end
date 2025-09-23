@@ -68,7 +68,7 @@ function handleDeleteItem(itemId: string) {
   }
 }
 
-function createNewFile() {
+async function createNewFile() {
   const fileName = prompt('Enter file name (with extension .html, .css, or .js):')
   if (!fileName) return
 
@@ -79,8 +79,10 @@ function createNewFile() {
   }
 
   const fileType = extension as 'html' | 'css' | 'js'
-  const newFileId = editorStore.createNewFile(fileName, fileType)
-  editorStore.openFile(newFileId)
+  const newFileId = await editorStore.createNewFile(fileName, fileType)
+  if (newFileId) {
+    editorStore.openFile(newFileId)
+  }
 }
 
 function createNewFolder() {
@@ -95,7 +97,7 @@ function createNewFolder() {
   editorStore.createNewFolder(folderName)
 }
 
-function createFileInParent(parentId: string) {
+async function createFileInParent(parentId: string) {
   const fileName = prompt('Enter file name (with extension .html, .css, or .js):')
   if (!fileName) return
 
@@ -106,8 +108,10 @@ function createFileInParent(parentId: string) {
   }
 
   const fileType = extension as 'html' | 'css' | 'js'
-  const newFileId = editorStore.createNewFile(fileName, fileType, parentId)
-  editorStore.openFile(newFileId)
+  const newFileId = await editorStore.createNewFile(fileName, fileType, parentId)
+  if (newFileId) {
+    editorStore.openFile(newFileId)
+  }
 }
 
 function createFolderInParent(parentId: string) {
