@@ -57,6 +57,20 @@ export const useEditorStore = defineStore('editor', () => {
       const response = await apiService.getFileTree()
       if (response.success && response.data) {
         fileTree.value = response.data
+
+        // بررسی تب‌های باز و حذف فایل‌هایی که دیگر در درخت وجود ندارند
+        const filesToRemove: string[] = []
+        for (const openFile of openFiles.value) {
+          const fileExists = findFileInTree(openFile.id)
+          if (!fileExists) {
+            filesToRemove.push(openFile.id)
+          }
+        }
+
+        // حذف فایل‌های غیرموجود از تب‌ها
+        for (const fileId of filesToRemove) {
+          closeFile(fileId)
+        }
       } else {
         error.value = response.message || 'خطا در بارگذاری فایل‌ها'
       }
@@ -233,10 +247,21 @@ export const useEditorStore = defineStore('editor', () => {
   // حذف فایل یا فولدر
   async function deleteItem(itemId: string) {
     try {
+      // ابتدا آیتم را در درخت پیدا می‌کنیم تا نوع آن را بدانیم
+      const itemToDelete = findFileInTree(itemId)
+
       const response = await apiService.deleteItem(itemId)
       if (response.success) {
-        // بستن فایل اگر باز بود
-        closeFile(itemId)
+        if (itemToDelete) {
+          if (itemToDelete.type === 'file') {
+            // اگر فایل است، فقط آن را بستن
+            closeFile(itemId)
+          } else if (itemToDelete.type === 'folder') {
+            // اگر پوشه است، تمام فایل‌های زیرمجموعه را بستن
+            closeFilesInFolder(itemToDelete)
+          }
+        }
+
         // بروزرسانی درخت فایل‌ها
         await loadFileTree()
       } else {
@@ -245,6 +270,21 @@ export const useEditorStore = defineStore('editor', () => {
     } catch (err) {
       error.value = 'خطا در ارتباط با سرور'
       console.error('Failed to delete item:', err)
+    }
+  }
+
+  // بستن تمام فایل‌های داخل یک پوشه (به صورت بازگشتی)
+  function closeFilesInFolder(folderNode: FileNode) {
+    if (!folderNode.children) return
+
+    for (const child of folderNode.children) {
+      if (child.type === 'file') {
+        // بستن فایل
+        closeFile(child.id)
+      } else if (child.type === 'folder') {
+        // بررسی بازگشتی پوشه‌های زیرمجموعه
+        closeFilesInFolder(child)
+      }
     }
   }
 
@@ -429,5 +469,6 @@ export const useEditorStore = defineStore('editor', () => {
     restoreTabsState,
     clearTabsState,
     refreshFileContent,
+    closeFilesInFolder,
   }
 })
