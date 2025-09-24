@@ -91,9 +91,14 @@ import 'prismjs/components/prism-markup'; // برای HTML
 import 'prismjs/components/prism-css';
 import 'prismjs/themes/prism-okaidia.css';
 import prettier from 'prettier/standalone';
-import parserBabel from 'prettier/parser-babel'; // برای JavaScript
-import parserHtml from 'prettier/parser-html'; // برای HTML
-import parserCss from 'prettier/parser-postcss'; // برای CSS
+// import parserBabel from 'prettier/parser-babel'; // برای JavaScript
+// import parserHtml from 'prettier/parser-html'; // برای HTML
+// import parserCss from 'prettier/parser-postcss'; // برای CSS
+import * as babelPlugin from 'prettier/plugins/babel';
+import * as htmlPlugin from 'prettier/plugins/html';
+import * as postcssPlugin from 'prettier/plugins/postcss';
+import * as estreePlugin from 'prettier/plugins/estree';
+import type { Plugin } from 'prettier';
 
 const editorStore = useEditorStore()
 
@@ -213,7 +218,7 @@ async function formatCode() {
       case 'html':
         formatted = await prettier.format(editorContent.value, {
           parser: 'html',
-          plugins: [parserHtml],
+          plugins: [htmlPlugin],
           tabWidth: 2,
           useTabs: false,
           printWidth: 80,
@@ -223,7 +228,7 @@ async function formatCode() {
       case 'css':
         formatted = await prettier.format(editorContent.value, {
           parser: 'css',
-          plugins: [parserCss],
+          plugins: [postcssPlugin],
           tabWidth: 2,
           useTabs: false,
           printWidth: 80,
@@ -232,7 +237,7 @@ async function formatCode() {
       case 'js':
         formatted = await prettier.format(editorContent.value, {
           parser: 'babel',
-          plugins: [parserBabel],
+          plugins: [babelPlugin , estreePlugin] as Plugin<any>[],
           tabWidth: 2,
           useTabs: false,
           printWidth: 80,
