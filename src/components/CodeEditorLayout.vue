@@ -4,13 +4,6 @@
     <div class="bg-gray-800 border-b border-gray-700 px-4 py-2 flex items-center justify-between">
       <div class="flex items-center space-x-4">
         <h1 class="text-white font-semibold text-lg">Code Editor</h1>
-        <div class="flex items-center space-x-2 text-sm text-gray-400">
-          <span>Vue.js</span>
-          <span>•</span>
-          <span>TypeScript</span>
-          <span>•</span>
-          <span>Tailwind CSS</span>
-        </div>
       </div>
 
       <div class="flex items-center space-x-2">
@@ -75,8 +68,6 @@ import FileExplorer from '@/components/FileExplorer.vue'
 import TabSystem from '@/components/TabSystem.vue'
 import CodeEditor from '@/components/CodeEditor.vue'
 import InputModal from '@/components/InputModal.vue'
-import { toast } from "vue3-toastify";
-import "vue3-toastify/dist/index.css";
 
 const editorStore = useEditorStore()
 
