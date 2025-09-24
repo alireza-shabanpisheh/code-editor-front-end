@@ -36,6 +36,12 @@ export const useEditorStore = defineStore('editor', () => {
   // فایل فعال
   const activeFileId = ref<string | null>(null)
 
+  // کلیدهای localStorage
+  const STORAGE_KEYS = {
+    OPEN_FILES: 'editor-open-files',
+    ACTIVE_FILE_ID: 'editor-active-file-id',
+  }
+
   // محاسبه شده: فایل فعال
   const activeFile = computed(() => {
     if (!activeFileId.value) return null
@@ -85,6 +91,8 @@ export const useEditorStore = defineStore('editor', () => {
     const existingFile = openFiles.value.find((file) => file.id === fileId)
     if (existingFile) {
       activeFileId.value = fileId
+      // ذخیره وضعیت تب‌ها
+      saveTabsState()
       return
     }
 
@@ -102,6 +110,8 @@ export const useEditorStore = defineStore('editor', () => {
 
         openFiles.value.push(newFile)
         activeFileId.value = fileId
+        // ذخیره وضعیت تب‌ها
+        saveTabsState()
       } else {
         error.value = response.message || 'خطا در بارگذاری فایل'
       }
@@ -126,6 +136,9 @@ export const useEditorStore = defineStore('editor', () => {
         activeFileId.value = null
       }
     }
+
+    // ذخیره وضعیت تب‌ها
+    saveTabsState()
   }
 
   // تغییر محتوای فایل
@@ -271,6 +284,8 @@ export const useEditorStore = defineStore('editor', () => {
         // بستن همه فایل‌های باز
         openFiles.value = []
         activeFileId.value = null
+        // پاک کردن وضعیت ذخیره شده
+        clearTabsState()
         // بروزرسانی درخت فایل‌ها
         await loadFileTree()
       } else {
@@ -285,6 +300,110 @@ export const useEditorStore = defineStore('editor', () => {
   // پاک کردن خطا
   function clearError() {
     error.value = null
+  }
+
+  // ذخیره وضعیت تب‌ها در localStorage
+  function saveTabsState() {
+    try {
+      localStorage.setItem(STORAGE_KEYS.OPEN_FILES, JSON.stringify(openFiles.value))
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_FILE_ID, activeFileId.value || '')
+    } catch (error) {
+      console.warn('Failed to save tabs state to localStorage:', error)
+    }
+  }
+
+  // بازیابی وضعیت تب‌ها از localStorage
+  async function restoreTabsState() {
+    try {
+      const savedOpenFiles = localStorage.getItem(STORAGE_KEYS.OPEN_FILES)
+      const savedActiveFileId = localStorage.getItem(STORAGE_KEYS.ACTIVE_FILE_ID)
+
+      if (savedOpenFiles) {
+        const parsedOpenFiles = JSON.parse(savedOpenFiles)
+        // بررسی اینکه آرایه معتبری دریافت کرده‌ایم
+        if (Array.isArray(parsedOpenFiles)) {
+          // ابتدا فایل‌ها را با محتوای localStorage بارگذاری می‌کنیم
+          openFiles.value = parsedOpenFiles
+
+          // سپس محتوای فایل فعال را از سرور بازیابی می‌کنیم
+          if (savedActiveFileId) {
+            activeFileId.value = savedActiveFileId
+            const activeFile = parsedOpenFiles.find((file) => file.id === savedActiveFileId)
+            if (activeFile) {
+              try {
+                const response = await apiService.getFileContent(activeFile.id)
+                if (response.success && response.data) {
+                  // بروزرسانی محتوای فایل فعال
+                  const fileIndex = openFiles.value.findIndex((f) => f.id === activeFile.id)
+                  if (fileIndex !== -1) {
+                    openFiles.value[fileIndex].content = response.data.content
+                    openFiles.value[fileIndex].isDirty = false
+                  }
+                }
+              } catch (err) {
+                console.warn(`Failed to restore active file content for ${activeFile.name}:`, err)
+              }
+            }
+          }
+
+          // بقیه فایل‌ها را در پس‌زمینه بازیابی می‌کنیم
+          setTimeout(async () => {
+            for (const file of parsedOpenFiles) {
+              if (file.id !== savedActiveFileId) {
+                try {
+                  const response = await apiService.getFileContent(file.id)
+                  if (response.success && response.data) {
+                    const fileIndex = openFiles.value.findIndex((f) => f.id === file.id)
+                    if (fileIndex !== -1) {
+                      openFiles.value[fileIndex].content = response.data.content
+                      openFiles.value[fileIndex].isDirty = false
+                    }
+                  }
+                } catch (err) {
+                  console.warn(`Failed to restore content for file ${file.name}:`, err)
+                }
+              }
+            }
+          }, 100)
+        }
+      } else if (savedActiveFileId) {
+        activeFileId.value = savedActiveFileId
+      }
+    } catch (error) {
+      console.warn('Failed to restore tabs state from localStorage:', error)
+      // در صورت خطا، وضعیت را ریست می‌کنیم
+      openFiles.value = []
+      activeFileId.value = null
+    }
+  }
+
+  // پاک کردن وضعیت ذخیره شده
+  function clearTabsState() {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.OPEN_FILES)
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_FILE_ID)
+    } catch (error) {
+      console.warn('Failed to clear tabs state from localStorage:', error)
+    }
+  }
+
+  // بازیابی محتوای یک فایل خاص از سرور
+  async function refreshFileContent(fileId: string) {
+    const fileIndex = openFiles.value.findIndex((f) => f.id === fileId)
+    if (fileIndex === -1) return false
+
+    try {
+      const response = await apiService.getFileContent(fileId)
+      if (response.success && response.data) {
+        openFiles.value[fileIndex].content = response.data.content
+        openFiles.value[fileIndex].isDirty = false
+        saveTabsState()
+        return true
+      }
+    } catch (err) {
+      console.warn(`Failed to refresh content for file ${fileId}:`, err)
+    }
+    return false
   }
 
   return {
@@ -306,5 +425,9 @@ export const useEditorStore = defineStore('editor', () => {
     resetProject,
     clearError,
     findFileInTree,
+    saveTabsState,
+    restoreTabsState,
+    clearTabsState,
+    refreshFileContent,
   }
 })

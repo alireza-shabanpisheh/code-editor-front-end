@@ -8,8 +8,11 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const editorStore = useEditorStore()
 
 // بارگذاری اولیه داده‌ها هنگام شروع برنامه
-onMounted(() => {
-  editorStore.loadFileTree()
+onMounted(async () => {
+  // ابتدا وضعیت تب‌ها را بازیابی می‌کنیم (شامل بازیابی محتوای فایل‌ها از سرور)
+  await editorStore.restoreTabsState()
+  // سپس درخت فایل‌ها را بارگذاری می‌کنیم
+  await editorStore.loadFileTree()
 })
 </script>
 
