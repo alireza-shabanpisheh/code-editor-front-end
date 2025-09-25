@@ -28,7 +28,9 @@ function handleTabClick(fileId: string) {
 
 function handleTabClose(fileId: string) {
   editorStore.closeFile(fileId)
-}</script>
+}
+
+</script>
 
 <style scoped>
 .tabs-container::-webkit-scrollbar {

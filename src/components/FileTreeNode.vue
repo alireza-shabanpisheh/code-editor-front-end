@@ -7,7 +7,6 @@
       @click="handleClick"
       @contextmenu="handleRightClick"
     >
-      <!-- آیکون برای پوشه یا فایل -->
       <div class="w-4 h-4 mr-2 flex items-center justify-center">
         <template v-if="node.type === 'folder'">
           <svg v-if="node.isOpen" class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -18,7 +17,6 @@
           </svg>
         </template>
         <template v-else>
-          <!-- آیکون فایل بر اساس نوع -->
           <div 
             class="w-3 h-3 rounded-sm flex items-center justify-center text-xs font-bold"
             :class="getFileIconClass()"
@@ -28,7 +26,6 @@
         </template>
       </div>
       
-      <!-- نام فایل یا پوشه -->
       <span 
         class="truncate flex-1"
         :class="getFileNameClass()"
@@ -64,7 +61,6 @@
       </div>
     </div>
     
-    <!-- فرزندان پوشه -->
     <template v-if="node.type === 'folder' && node.isOpen && node.children">
       <FileTreeNode
         v-for="child in node.children"

@@ -86,8 +86,8 @@
 import { computed, ref, watch, nextTick } from 'vue'
 import { useEditorStore } from '@/stores/editor'
 import Prism from 'prismjs';
-import 'prismjs/components/prism-javascript'; // برای پشتیبانی از JavaScript
-import 'prismjs/components/prism-markup'; // برای HTML
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-markup';
 import 'prismjs/components/prism-css';
 import 'prismjs/themes/prism-okaidia.css';
 import prettier from 'prettier/standalone';
@@ -243,7 +243,6 @@ async function formatCode() {
     }
   } catch (error) {
     console.error('Error formatting code:', error);
-    // اگه خطایی رخ داد، کد بدون تغییر می‌مونه
   }
 
   editorContent.value = formatted;
