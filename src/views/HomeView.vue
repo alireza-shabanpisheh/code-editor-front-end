@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import PostCard from '@/components/PostCard.vue'
 </script>
 
 <template>
@@ -61,14 +60,6 @@ import PostCard from '@/components/PostCard.vue'
         </div>
         <h3 class="text-xl font-semibold text-gray-900 mb-2">Multi-Tab Support</h3>
         <p class="text-gray-600">Work with multiple files simultaneously using tabbed interface.</p>
-      </div>
-    </div>
-
-    <!-- Demo Component -->
-    <div class="text-center">
-      <h2 class="text-3xl font-bold text-gray-900 mb-8">Sample Component</h2>
-      <div class="max-w-md mx-auto">
-        <PostCard title="Welcome to the Code Editor!" />
       </div>
     </div>
   </div>

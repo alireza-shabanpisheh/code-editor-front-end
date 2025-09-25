@@ -119,8 +119,6 @@ function handleRightClick(event: MouseEvent) {
   event.preventDefault()
   event.stopPropagation()
   
-  // For now, we'll use the simple button approach
-  // Context menu could be implemented later if needed
 }
 
 function getFileIconClass() {

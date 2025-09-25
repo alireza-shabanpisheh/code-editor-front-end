@@ -2,7 +2,7 @@
     <div v-if="isLoading" class="loading-overlay">
         <div class="loading-spinner">
             <div class="spinner"></div>
-            <p>در حال بارگذاری...</p>
+            <p>Loading...</p>
         </div>
     </div>
 </template>

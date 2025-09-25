@@ -91,9 +91,6 @@ import 'prismjs/components/prism-markup'; // برای HTML
 import 'prismjs/components/prism-css';
 import 'prismjs/themes/prism-okaidia.css';
 import prettier from 'prettier/standalone';
-// import parserBabel from 'prettier/parser-babel'; // برای JavaScript
-// import parserHtml from 'prettier/parser-html'; // برای HTML
-// import parserCss from 'prettier/parser-postcss'; // برای CSS
 import * as babelPlugin from 'prettier/plugins/babel';
 import * as htmlPlugin from 'prettier/plugins/html';
 import * as postcssPlugin from 'prettier/plugins/postcss';
@@ -253,40 +250,6 @@ async function formatCode() {
   handleContentChange();
 }
 
-// function formatHTML(code: string): string {
-//   // Very basic HTML formatting
-//   return code
-//     .replace(/>\s*</g, '>\n<')
-//     .split('\n')
-//     .map(line => line.trim())
-//     .filter(line => line.length > 0)
-//     .join('\n')
-// }
-
-// function formatCSS(code: string): string {
-//   // Very basic CSS formatting
-//   return code
-//     .replace(/\{/g, ' {\n  ')
-//     .replace(/\}/g, '\n}\n')
-//     .replace(/;/g, ';\n  ')
-//     .replace(/,/g, ',\n')
-//     .split('\n')
-//     .map(line => line.trim())
-//     .filter(line => line.length > 0)
-//     .join('\n')
-// }
-
-// function formatJS(code: string): string {
-//   // Very basic JS formatting
-//   return code
-//     .replace(/\{/g, ' {\n  ')
-//     .replace(/\}/g, '\n}\n')
-//     .replace(/;/g, ';\n')
-//     .split('\n')
-//     .map(line => line.trim())
-//     .filter(line => line.length > 0)
-//     .join('\n')
-// }
 
 </script>
 
