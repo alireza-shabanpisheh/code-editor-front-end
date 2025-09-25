@@ -7,11 +7,8 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const editorStore = useEditorStore()
 
-// بارگذاری اولیه داده‌ها هنگام شروع برنامه
 onMounted(async () => {
-  // ابتدا وضعیت تب‌ها را بازیابی می‌کنیم (شامل بازیابی محتوای فایل‌ها از سرور)
   await editorStore.restoreTabsState()
-  // سپس درخت فایل‌ها را بارگذاری می‌کنیم
   await editorStore.loadFileTree()
 })
 </script>
@@ -23,7 +20,7 @@ onMounted(async () => {
       <div class="max-w-6xl mx-auto px-4 py-4">
         <nav class="flex items-center justify-between">
           <div class="flex items-center space-x-8">
-            <h1 class="text-2xl font-bold text-gray-900">My Project</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Code Editor</h1>
             <div class="flex space-x-4">
               <RouterLink to="/"
                 class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
