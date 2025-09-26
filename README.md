@@ -54,20 +54,54 @@ front-end/
 ├── src/
 │   ├── components/         # کامپوننت‌های Vue
 │   │   ├── CodeEditor.vue
+│   │   ├── CodeEditorLayout.vue
 │   │   ├── FileExplorer.vue
+│   │   ├── FileTreeNode.vue
 │   │   ├── TabSystem.vue
+│   │   ├── TabItem.vue
+│   │   ├── InputModal.vue
 │   │   ├── ErrorHandler.vue
 │   │   └── LoadingSpinner.vue
+│   ├── composables/        # منطق قابل استفاده مجدد
+│   │   ├── useCodeEditor.ts
+│   │   ├── useFileIcons.ts
+│   │   ├── useFileValidation.ts
+│   │   ├── useKeyboardShortcuts.ts
+│   │   ├── useModal.ts
+│   │   └── index.ts
 │   ├── services/           # سرویس‌های API
 │   │   └── api.ts
 │   ├── stores/             # Pinia stores
 │   │   └── editor.ts
 │   ├── views/              # صفحات اصلی
+│   │   ├── HomeView.vue
+│   │   ├── AboutView.vue
 │   │   └── CodeEditorView.vue
 │   └── router/             # تنظیمات مسیریابی
+│       └── index.ts
 ├── public/                 # فایل‌های استاتیک
 └── dist/                   # فایل‌های ساخته شده
 ```
+
+## معماری کد
+
+### Composables
+
+پروژه از معماری composition API استفاده می‌کند و منطق اصلی در composables جداگانه قرار دارد:
+
+- **useCodeEditor**: مدیریت ویرایشگر کد، syntax highlighting، و formatting
+- **useFileIcons**: مدیریت آیکون‌های فایل‌ها
+- **useFileValidation**: اعتبارسنجی نام فایل‌ها و پوشه‌ها
+- **useKeyboardShortcuts**: مدیریت میانبرهای صفحه‌کلید
+- **useModal**: مدیریت modal ها و ورودی‌ها
+
+### کامپوننت‌ها
+
+کامپوننت‌ها تمیز و قابل خواندن هستند و فقط UI را مدیریت می‌کنند:
+
+- منطق پیچیده به composables منتقل شده
+- کد تکراری کاهش یافته
+- خوانایی بهبود یافته
 
 ## Backend
 

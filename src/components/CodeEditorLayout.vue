@@ -64,12 +64,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useEditorStore } from '@/stores/editor'
+import { useFileValidation } from '@/composables/useFileValidation'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import FileExplorer from '@/components/FileExplorer.vue'
 import TabSystem from '@/components/TabSystem.vue'
 import CodeEditor from '@/components/CodeEditor.vue'
 import InputModal from '@/components/InputModal.vue'
 
 const editorStore = useEditorStore()
+const { validateFileName, getFileTypeFromName } = useFileValidation()
 
 // Modal state
 const showFileModal = ref(false)
@@ -77,7 +80,6 @@ const showFileModal = ref(false)
 // Computed properties
 const activeFile = computed(() => editorStore.activeFile)
 const openFilesCount = computed(() => editorStore.openFiles.length)
-
 const hasUnsavedFiles = computed(() => {
   return editorStore.openFiles.some(file => file.isDirty)
 })
@@ -91,30 +93,6 @@ function createNewFile() {
   showFileModal.value = true
 }
 
-// Validation function
-function validateFileName(fileName: string): string | null {
-  if (!fileName.trim()) {
-    return 'File name cannot be empty'
-  }
-
-  const extension = fileName.split('.').pop()?.toLowerCase()
-  if (!extension || !['html', 'css', 'js'].includes(extension)) {
-    return 'Please use .html, .css, or .js extension'
-  }
-
-  return null
-}
-
-// Confirm handler
-async function handleCreateFileConfirm(fileName: string) {
-  const extension = fileName.split('.').pop()?.toLowerCase() as 'html' | 'css' | 'js'
-  const newFileId = await editorStore.createNewFile(fileName, extension)
-  if (newFileId) {
-    editorStore.openFile(newFileId)
-  }
-  showFileModal.value = false
-}
-
 function saveAll() {
   editorStore.openFiles.forEach(file => {
     if (file.isDirty) {
@@ -123,20 +101,33 @@ function saveAll() {
   })
 }
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (event) => {
-  // Ctrl+N for new file
-  if (event.ctrlKey && event.key === 'n') {
-    event.preventDefault()
-    createNewFile()
+async function handleCreateFileConfirm(fileName: string) {
+  const fileType = getFileTypeFromName(fileName)
+  if (fileType) {
+    const newFileId = await editorStore.createNewFile(fileName, fileType)
+    if (newFileId) {
+      editorStore.openFile(newFileId)
+    }
   }
+  showFileModal.value = false
+}
 
-  // Ctrl+Shift+S for save all
-  if (event.ctrlKey && event.shiftKey && event.key === 'S') {
-    event.preventDefault()
-    saveAll()
+// Keyboard shortcuts
+useKeyboardShortcuts([
+  {
+    key: 'n',
+    ctrlKey: true,
+    callback: createNewFile,
+    description: 'Create new file'
+  },
+  {
+    key: 's',
+    ctrlKey: true,
+    shiftKey: true,
+    callback: saveAll,
+    description: 'Save all files'
   }
-})
+])
 </script>
 
 <style scoped>

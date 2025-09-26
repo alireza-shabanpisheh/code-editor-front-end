@@ -43,10 +43,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useEditorStore } from '@/stores/editor'
+import { useFileValidation } from '@/composables/useFileValidation'
 import FileTreeNode from './FileTreeNode.vue'
 import InputModal from './InputModal.vue'
 
 const editorStore = useEditorStore()
+const { validateFileName, validateFolderName, getFileTypeFromName } = useFileValidation()
 
 // Modal states
 const showFileModal = ref(false)
@@ -57,6 +59,7 @@ const currentParentId = ref<string | undefined>(undefined)
 
 const fileTree = computed(() => editorStore.fileTree)
 
+// Event handlers
 function handleOpenFile(fileId: string) {
   editorStore.openFile(fileId)
 }
@@ -79,7 +82,7 @@ function handleDeleteItem(itemId: string) {
   editorStore.deleteItem(itemId)
 }
 
-// Modal handlers
+// Modal actions
 function createNewFile() {
   showFileModal.value = true
 }
@@ -88,38 +91,14 @@ function createNewFolder() {
   showFolderModal.value = true
 }
 
-// Validation functions
-function validateFileName(fileName: string): string | null {
-  if (!fileName.trim()) {
-    return 'File name cannot be empty'
-  }
-
-  const extension = fileName.split('.').pop()?.toLowerCase()
-  if (!extension || !['html', 'css', 'js'].includes(extension)) {
-    return 'Please use .html, .css, or .js extension'
-  }
-
-  return null
-}
-
-function validateFolderName(folderName: string): string | null {
-  if (!folderName.trim()) {
-    return 'Folder name cannot be empty'
-  }
-
-  if (folderName.includes('.')) {
-    return 'Folder names should not contain dots'
-  }
-
-  return null
-}
-
 // Confirm handlers
 async function handleCreateFileConfirm(fileName: string) {
-  const extension = fileName.split('.').pop()?.toLowerCase() as 'html' | 'css' | 'js'
-  const newFileId = await editorStore.createNewFile(fileName, extension)
-  if (newFileId) {
-    editorStore.openFile(newFileId)
+  const fileType = getFileTypeFromName(fileName)
+  if (fileType) {
+    const newFileId = await editorStore.createNewFile(fileName, fileType)
+    if (newFileId) {
+      editorStore.openFile(newFileId)
+    }
   }
   showFileModal.value = false
 }
@@ -130,10 +109,12 @@ async function handleCreateFolderConfirm(folderName: string) {
 }
 
 async function handleCreateFileInParentConfirm(fileName: string) {
-  const extension = fileName.split('.').pop()?.toLowerCase() as 'html' | 'css' | 'js'
-  const newFileId = await editorStore.createNewFile(fileName, extension, currentParentId.value)
-  if (newFileId) {
-    editorStore.openFile(newFileId)
+  const fileType = getFileTypeFromName(fileName)
+  if (fileType) {
+    const newFileId = await editorStore.createNewFile(fileName, fileType, currentParentId.value)
+    if (newFileId) {
+      editorStore.openFile(newFileId)
+    }
   }
   showFileInParentModal.value = false
   currentParentId.value = undefined

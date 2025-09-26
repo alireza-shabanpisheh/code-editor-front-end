@@ -29,7 +29,6 @@ function handleTabClick(fileId: string) {
 function handleTabClose(fileId: string) {
   editorStore.closeFile(fileId)
 }
-
 </script>
 
 <style scoped>
